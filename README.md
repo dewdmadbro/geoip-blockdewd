@@ -15,6 +15,7 @@
 
  Requires yq & grepcidr which both will be installed if needed during installation\
  Systemd for scheduling and automation\
+ Only used with iptables and ipset
  
  To install download via command line
 
