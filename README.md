@@ -13,6 +13,8 @@
 
 ### **Requirements and installation**
 
+ Requires geoip-shell go get it if you dont have it and give this guy some stars -> [GEOIP-SHELL](https://github.com/friendly-bits/geoip-shell?tab=readme-ov-file)
+ I couldn't have done this if he didn't already make something awesome and super user friendly.\
  Requires yq & grepcidr which both will be installed if needed during installation\
  Systemd for scheduling and automation\
  Only used with iptables and ipset
