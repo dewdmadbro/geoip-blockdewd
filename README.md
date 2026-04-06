@@ -2,6 +2,8 @@
 
  Easy and automated blocklist pulling and importing for geoip-shell aimed at reducing entries in ipsets and minimal impact on hardware. Designed to run as a systemd service for a set and forget approach once configured.
 
+ **Disclaimer**
+       I only have a Linux mint machine to test on and this is what works for me. I would guess Ubuntu will handle this. I spent a few weeks wokring on this and learning as I go. It may not be the best solution but for my use it has been adequate.
 
 ## **Main Features**
 
