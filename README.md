@@ -1,6 +1,7 @@
 # **GEOIP-BlockDewd**
 
- Easy and automated blocklist pulling and importing for geoip-shell aimed at reducing entries in ipsets and minimal impact on hardware. Designed to run as a systemd service for a set and forget approach once configured.
+ Easy and automated blocklist pulling and importing for geoip-shell aimed at reducing entries in ipsets and minimal impact on hardware. Designed to run as a systemd service for a set and forget approach once configured.\
+ Or can be used just to add logging to geoip-shell rules. 
 
  **Disclaimer**
        I only have a Linux mint machine to test on and this is what works for me. I would guess Ubuntu will handle this. I spent a few weeks wokring on this and learning as I go. It may not be the best solution but for my use it has been adequate.
@@ -8,7 +9,7 @@
 ## **Main Features**
 
  Easy configuration via a simple yaml file\
- Automated blocklist pulling and import every 24 hours\
+ Automated blocklist pulling and import every 24 hours(user configurable) if wanted\
  Filters out duplicate entries from pulled lists\
  Checks IP's against geopip-shell's geo blocking lists\
  Can add log & drop rules to existing installs if wanted\
@@ -40,7 +41,7 @@
         cd geoip-blockdewd
         nano config.yaml
 
- Once done with config you will need to make geoip-blockdewd.sh executable and then run install
+ Once done with config you will need to make geoip-blockdewd.sh executable and then run install (If you only want to add logging then skip this step)
 
         chmod +x geoip-shelldewd.sh
         sudo ./geoip-shelldewd.sh install
@@ -55,7 +56,9 @@
         sudo ./geoip-shelldewd.sh logdrop
 
  This will backup and then modify geoip-shell-lib-common & geoip-shell-lib-ipt. After that it will add a new mangle chain GEOIP-DROP for logging and dropping.
- Lastly it will modify the existing rules in GEOIP-SHELL_IN to send traffic we want to drop to GEOIP-DROP 
+ Lastly it will modify the existing rules in GEOIP-SHELL_IN to send traffic we want to drop to GEOIP-DRO. It will log to the kernel log, to watch in realtime run the following
+
+       sudo tail -f /var/log/kern.log
 
 ### **Removal and updating**
 
