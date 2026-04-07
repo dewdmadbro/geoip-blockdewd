@@ -2,7 +2,7 @@
 
 
 usage() {
-    echo "Usage: $0 [install|remove|run|removelog|logdrop]"
+    echo "Usage: $0 [install|remove|run|removelog|logdrop|update]"
     exit 1
 }
 
@@ -233,6 +233,27 @@ logdrop() {
     ip6tables -t mangle -R GEOIP-SHELL_IN 6 -m comment --comment geoip-shell_whitelist_block -j GEOIP-DROP
 }
 
+update() {
+    echo "updating....."
+    #curl lastest package    
+    LOCATION=$(curl -s https://api.github.com/repos/dewdmadbro/geoip-blockdewd/releases/latest \
+    | grep "tarball_url" \
+    | awk '{ print $2 }' \
+    | sed 's/,$//'       \
+    | sed 's/"//g' )     \
+    ; curl -L -o geoip-blockdewd.tar.gz $LOCATION
+    sleep 1
+
+    #extract files overwriting files excluding config
+    tar -xvzf geoip-blockdewd.tar.gz --strip-components=1 --exclude="config.yaml"
+    rm geoip-blockdewd.tar.gz
+
+    #makes files excutable
+    chmod +x geoip-shelldewd.sh
+    chmod +x geoip-blockdewd.sh
+    echo "complete....."
+    sleep 1
+}
 
 case "$1" in
     install)     install ;;
@@ -240,5 +261,6 @@ case "$1" in
     removelog) removelog ;;
     run)         run     ;;
     logdrop)     logdrop ;;
+    update)      update  ;;
     *)           usage   ;;
 esac

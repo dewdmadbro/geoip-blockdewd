@@ -82,6 +82,7 @@
 
  **To update**
  
- No mechanism other than removing and installing the latest package
+         cd geoip-blockdewd
+        sudo ./geoip-shelldewd.sh update
 
 
