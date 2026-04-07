@@ -71,7 +71,7 @@ whitelist_mode() {
 blacklist_mode() {
     echo "-----> Removing Unecessary IPs"
     #get the ips matching in the blacklist
-    geoip-shell lookup -F "$SORTED_IP" | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$' | > "$BLOCKED"
+    geoip-shell lookup -F "$SORTED_IP" | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$' > "$BLOCKED"
     #remove matching ips
     grep -xvFf "$BLOCKED" "$SORTED_IP" > "$IMPORT"
 }
