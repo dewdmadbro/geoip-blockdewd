@@ -12,7 +12,7 @@
  Automated blocklist pulling and import every 24 hours(user configurable) if wanted\
  Filters out duplicate entries from pulled lists\
  Checks IP's against geopip-shell's geo blocking lists\
- Can add log & drop rules to existing installs if wanted\
+ Can add log & drop rules to existing installs if wanted
 
 ### **Requirements and installation**
 
@@ -36,7 +36,7 @@
         tar -xvzf geoip-blockdewd.tar.gz --one-top-level --strip-components=1
         rm geoip-blockdewd.tar.gz
 
- Read and edit config.yaml replace nano with your editor. You can change the sytemd timer or add more urls
+ Read and edit config.yaml replace nano with your editor. You can change the sytemd timer or add more urls, additionally you must set your geoip-shell blocking mode or the script will not run.
 
         cd geoip-blockdewd
         nano config.yaml
@@ -49,7 +49,7 @@
  During installation it will check for yq & grepcidr and install if needed\
  Also the systemd service and timer will be generated\
  It will map the service to run geoip-blockdewd.sh and generate a log in the extracted folder
- The final thing it will do is run the service for the first time\  
+ The final thing it will do is run the service for the first time  
 
  If you want to add logging then run the following
 
@@ -69,7 +69,7 @@
 
  This will disble the geoip-blockdewd.service and geoip-blockdewd.timer\
  Then it will remove the files and reload the systemd daemon\
- It will also ask if you want to remove yq and grepcidr\
+ It will also ask if you want to remove yq and grepcidr
 
  **To remove logging**
 

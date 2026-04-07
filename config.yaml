@@ -2,6 +2,12 @@
 
 #systemd run interval
 systemd_timer: '24h'
+#geoip-shell mode if set wrong script will fail
+#valid inputs
+# 'whitelist'
+# 'blacklist'
+blocking_mode: 
+#Lists need no filtering or only '#' needs filtered
 fetch_urls1:
   -  https://raw.githubusercontent.com/borestad/firehol-mirror/refs/heads/main/firehol_level1.netset
   -  https://raw.githubusercontent.com/borestad/firehol-mirror/refs/heads/main/firehol_level2.netset
@@ -19,6 +25,8 @@ fetch_urls1:
   -  https://raw.githubusercontent.com/stamparm/ipsum/refs/heads/master/levels/2.txt
   -  https://raw.githubusercontent.com/borestad/firehol-mirror/refs/heads/main/firehol_abusers_1d.netset
 
+#unique formatting
+#these need filtered to grab ips before country codes
 fetch_urls2:
   -  https://raw.githubusercontent.com/borestad/blocklist-abuseipdb/refs/heads/main/abuseipdb-s100-3d.ipv4
   -  https://raw.githubusercontent.com/borestad/blocklist-abuseipdb/refs/heads/main/stats/hallofshame/subnets/abuseipdb-s99-hallofshame-30d-75percent.ipv4
