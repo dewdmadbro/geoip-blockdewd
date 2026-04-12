@@ -87,6 +87,7 @@ EOF
     systemctl daemon-reload
     systemctl enable geoip-blockdewd.timer
     systemctl start geoip-blockdewd.timer
+    systemctl enable geoip-blockdewd.service    
     echo "Service Timer Enabled And Started"
     sleep 1
     echo "Running Service"
