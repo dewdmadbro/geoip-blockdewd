@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+if [[ $EUID -ne 0 ]]; then
+    echo "This script must be run as root" >&2
+    exit 1
+fi
 
 usage() {
     echo "Usage: $0 [install|remove|run|removelog|logdrop|update]"
@@ -72,7 +76,7 @@ EOF
     # make systemd timer file
     cat > /etc/systemd/system/geoip-blockdewd.timer << EOF
 [Unit]
-Description=Timer to run csblock every $TIMER hours
+Description=Timer to run geoip-blockdewd every $TIMER
 [Timer]
 OnUnitActiveSec=$TIMER
 Persistent=true
@@ -108,6 +112,7 @@ remove() {
     systemctl stop geoip-blockdewd.timer
     systemctl disable geoip-blockdewd.timer
     systemctl stop geoip-blockdewd.service
+    systemctl disable geoip-blockdewd.service
 
     # remove systemd files
     echo "Removing systemd files..."
@@ -160,18 +165,45 @@ remove() {
 removelog() {
     #revert changes to original files
     echo "Restoring original files"
-    rm "/usr/lib/geoip-shell/geoip-shell-lib-ipt.sh" 
-    rm "/usr/lib/geoip-shell/geoip-shell-lib-common.sh"
-    mv "/usr/lib/geoip-shell/geoip-shell-lib-ipt.orig" "/usr/lib/geoip-shell/geoip-shell-lib-ipt.sh"
-    mv "/usr/lib/geoip-shell/geoip-shell-lib-common.orig" "/usr/lib/geoip-shell/geoip-shell-lib-common.sh"
+    
+    IPT_FILE="/usr/lib/geoip-shell/geoip-shell-lib-ipt.sh"
+    IPT_ORIG="/usr/lib/geoip-shell/geoip-shell-lib-ipt.orig"
+    COMMON_FILE="/usr/lib/geoip-shell/geoip-shell-lib-common.sh"
+    COMMON_ORIG="/usr/lib/geoip-shell/geoip-shell-lib-common.orig"
+
+    if [[ -f "$IPT_ORIG" ]]; then
+        mv "$IPT_ORIG" "$IPT_FILE"
+        echo "Restored $IPT_FILE"
+    else
+        echo "Warning: $IPT_ORIG not found. Skipping restoration."
+    fi
+
+    if [[ -f "$COMMON_ORIG" ]]; then
+        mv "$COMMON_ORIG" "$COMMON_FILE"
+        echo "Restored $COMMON_FILE"
+    else
+        echo "Warning: $COMMON_ORIG not found. Skipping restoration."
+    fi
+    
     echo "File restoration complete"
     
     #remove mangle changes
     echo "Reverting mangle rules"
     sleep 1
-    iptables -t mangle -R GEOIP-SHELL_IN 5 -m set --match-set geoip-shell_local_block_4 src -m comment --comment geoip-shell_local_block_ipv4 -j DROP
-    iptables -t mangle -R GEOIP-SHELL_IN 7 -m comment --comment geoip-shell_whitelist_block -j DROP
-    ip6tables -t mangle -R GEOIP-SHELL_IN 6 -m comment --comment geoip-shell_whitelist_block -j DROP
+    RULE_1=$(iptables -t mangle -L GEOIP-SHELL_IN --line-numbers | \
+        grep "geoip-shell_local_block_ipv4" | awk '{print $1}')
+    
+    iptables -t mangle -R GEOIP-SHELL_IN "$RULE_1" -m set --match-set geoip-shell_local_block_4 src -m comment --comment geoip-shell_local_block_ipv4 -j DROP
+
+    RULE_2=$(iptables -t mangle -L GEOIP-SHELL_IN --line-numbers | \
+        grep "geoip-shell_whitelist_block" | awk '{print $1}')    
+
+    iptables -t mangle -R GEOIP-SHELL_IN "$RULE_2" -m comment --comment geoip-shell_whitelist_block -j DROP
+
+    RULE_3=$(ip6tables -t mangle -L GEOIP-SHELL_IN --line-numbers | \
+        grep "geoip-shell_whitelist_block" | awk '{print $1}')
+
+    ip6tables -t mangle -R GEOIP-SHELL_IN "$RULE_3" -m comment --comment geoip-shell_whitelist_block -j DROP
     
     #remove GEOIP-DROP chains
     echo "Removing GEOIP-DROP chain"
@@ -179,6 +211,10 @@ removelog() {
     iptables -t mangle -X GEOIP-DROP
     ip6tables -t mangle -F GEOIP-DROP
     ip6tables -t mangle -X GEOIP-DROP
+
+    #backup geoip
+    geoip-shell-backup.sh create-backup
+
 }
 
 run() {
@@ -223,15 +259,28 @@ logdrop() {
     ip6tables -t mangle -A GEOIP-DROP -j DROP
 
     #Replace existing rules to send to GEOIP-DROP Chain
-    read -p "Do you already use a blocklist with geoip-shell (y/n): " answer
-    if [[ "$answer" == "y" ]]; then
-        iptables -t mangle -R GEOIP-SHELL_IN 5 -m set --match-set geoip-shell_local_block_4 src -m comment --comment geoip-shell_local_block_ipv4 -j GEOIP-DROP
+    RULE_1=$(iptables -t mangle -L GEOIP-SHELL_IN --line-numbers | \
+        grep "geoip-shell_local_block_ipv4" | awk '{print $1}')
+
+    if [[ -n "$RULE_1" ]]; then
+        iptables -t mangle -R GEOIP-SHELL_IN "$RULE_1" -m set --match-set geoip-shell_local_block_4 src -m comment --comment geoip-shell_local_block_ipv4 -j GEOIP-DROP
     else
+        echo "Rule not found, inserting..."
         iptables -t mangle -I GEOIP-SHELL_IN 5 -m set --match-set geoip-shell_local_block_4 src -m comment --comment geoip-shell_local_block_ipv4 -j GEOIP-DROP
     fi
+   
+    RULE_2=$(iptables -t mangle -L GEOIP-SHELL_IN --line-numbers | \
+        grep "geoip-shell_whitelist_block" | awk '{print $1}')    
 
-    iptables -t mangle -R GEOIP-SHELL_IN 7 -m comment --comment geoip-shell_whitelist_block -j GEOIP-DROP
-    ip6tables -t mangle -R GEOIP-SHELL_IN 6 -m comment --comment geoip-shell_whitelist_block -j GEOIP-DROP
+    iptables -t mangle -R GEOIP-SHELL_IN "$RULE_2" -m comment --comment geoip-shell_whitelist_block -j GEOIP-DROP
+    
+    RULE_3=$(ip6tables -t mangle -L GEOIP-SHELL_IN --line-numbers | \
+        grep "geoip-shell_whitelist_block" | awk '{print $1}')
+
+    ip6tables -t mangle -R GEOIP-SHELL_IN "$RULE_3" -m comment --comment geoip-shell_whitelist_block -j GEOIP-DROP
+
+    #backup geoip
+    geoip-shell-backup.sh create-backup
 }
 
 update() {

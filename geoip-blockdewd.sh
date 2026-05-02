@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
+trap 'rm -f *.ipls' EXIT
 
 #Set variables
 RAW_IP="raw.ipls"               # ip lists downloaded information
