@@ -1,88 +1,189 @@
-# **GEOIP-BlockDewd**
+# 🛡️ GEOIP-BlockDewd
 
- Easy and automated blocklist pulling and importing for geoip-shell aimed at reducing entries in ipsets and minimal impact on hardware. Designed to run as a systemd service for a set and forget approach once configured.\
- Or can be used just to add logging to geoip-shell rules. 
+> Automated blocklist management for [geoip-shell](https://github.com/friendly-bits/geoip-shell) — reduce IP set bloat and minimize hardware impact with a set-and-forget approach.
 
- **Disclaimer**
-       I only have a Linux mint machine to test on and this is what works for me. I would guess Ubuntu will handle this. I spent a few weeks wokring on this and learning as I go. It may not be the best solution but for my use it has been adequate.
+[![License](https://img.shields.io/github/license/dewdmadbro/geoip-blockdewd)](LICENSE)
+[![Latest Release](https://img.shields.io/github/v/release/dewdmadbro/geoip-blockdewd)](https://github.com/dewdmadbro/geoip-blockdewd/releases/latest)
 
-## **Main Features**
+---
 
- Easy configuration via a simple yaml file\
- Automated blocklist pulling and import every 24 hours(user configurable) if wanted\
- Filters out duplicate entries from pulled lists\
- Checks IP's against geopip-shell's geo blocking lists\
- Can add log & drop rules to existing installs if wanted
+## 📋 Overview
 
-### **Requirements and installation**
+**GEOIP-BlockDewd** is a companion tool for [geoip-shell](https://github.com/friendly-bits/geoip-shell) that automates the fetching, deduplication, and importing of IP blocklists. It intelligently filters out IPs already blocked by geoip-shell's geo-blocking rules, keeping your `ipset` entries lean and reducing unnecessary load on your hardware.
 
- Requires geoip-shell go get it if you dont have it and give this guy some stars -> [GEOIP-SHELL](https://github.com/friendly-bits/geoip-shell?tab=readme-ov-file)
- I couldn't have done this if he didn't already make something awesome and super user friendly.\
- Requires yq & grepcidr which both will be installed if needed during installation\
- Systemd for scheduling and automation\
- Only used with iptables and ipset
- 
- To install download via command line
+Designed to run as a **systemd service**, it provides a fully automated, set-and-forget experience once configured. It can also optionally add **kernel logging** to geoip-shell drop rules for enhanced visibility.
 
-        LOCATION=$(curl -s https://api.github.com/repos/dewdmadbro/geoip-blockdewd/releases/latest \
-        | grep "tarball_url" \
-        | awk '{ print $2 }' \
-        | sed 's/,$//'       \
-        | sed 's/"//g' )     \
-        ; curl -L -o geoip-blockdewd.tar.gz $LOCATION
+---
 
- Then extract the files
+## ✨ Features
 
-        tar -xvzf geoip-blockdewd.tar.gz --one-top-level --strip-components=1
-        rm geoip-blockdewd.tar.gz
+| Feature | Description |
+|---|---|
+| 📝 **YAML Configuration** | Simple, human-readable config via `config.yaml` |
+| 🔄 **Automated Updates** | Scheduled blocklist fetching & importing (default: every 24h, configurable) |
+| 🧹 **Duplicate Filtering** | Removes duplicate entries from all fetched lists |
+| 🌍 **Geo-Aware Filtering** | Cross-references IPs against geoip-shell's geo-blocking lists to avoid redundancy |
+| 📊 **Import Statistics** | Provides a summary of fetched, filtered, and imported IPs |
+| 📝 **Optional Logging** | Adds a `GEOIP-DROP` mangle chain for kernel-level logging of dropped packets |
+| 🗑️ **Clean Removal** | Full uninstall support, including optional dependency cleanup |
 
- Read and edit config.yaml replace nano with your editor. You can change the sytemd timer or add more urls, additionally you must set your geoip-shell blocking mode or the script will not run.
+---
 
-        cd geoip-blockdewd
-        nano config.yaml
+## ⚙️ Requirements
 
- Once done with config you will need to make geoip-blockdewd.sh executable and then run install (If you only want to add logging then skip this step)
+- **Linux** (tested on Linux Mint; Ubuntu/Debian-based distros expected to work)
+- **[geoip-shell](https://github.com/friendly-bits/geoip-shell)** — must be installed and configured first
+- **iptables & ipset** — only iptables mode is supported
+- **systemd** — for scheduling and automation
+- **yq** & **grepcidr** — auto-installed during setup if missing
 
-        chmod +x geoip-shelldewd.sh
-        sudo ./geoip-shelldewd.sh install
+---
 
- During installation it will check for yq & grepcidr and install if needed\
- Also the systemd service and timer will be generated\
- It will map the service to run geoip-blockdewd.sh and generate a log in the extracted folder
- The final thing it will do is run the service for the first time  
+## 🚀 Installation
 
- If you want to add logging then run the following
+### 1. Download the latest release
 
-        sudo ./geoip-shelldewd.sh logdrop
+```bash
+LOCATION=$(curl -s https://api.github.com/repos/dewdmadbro/geoip-blockdewd/releases/latest \
+  | grep "tarball_url" \
+  | awk '{ print $2 }' \
+  | sed 's/,$//' \
+  | sed 's/"//g') \
+  ; curl -L -o geoip-blockdewd.tar.gz $LOCATION
+```
 
- This will backup and then modify geoip-shell-lib-common & geoip-shell-lib-ipt. After that it will add a new mangle chain GEOIP-DROP for logging and dropping.
- Lastly it will modify the existing rules in GEOIP-SHELL_IN to send traffic we want to drop to GEOIP-DRO. It will log to the kernel log, to watch in realtime run the following
+### 2. Extract the archive
 
-       sudo tail -f /var/log/kern.log
+```bash
+tar -xvzf geoip-blockdewd.tar.gz --one-top-level --strip-components=1
+rm geoip-blockdewd.tar.gz
+```
 
-### **Removal and updating**
+### 3. Configure
 
- **To remove blocklist and timer**
- 
-        cd geoip-blockdewd
-        sudo ./geoip-shelldewd.sh remove
+```bash
+cd geoip-blockdewd
+nano config.yaml
+```
 
- This will disble the geoip-blockdewd.service and geoip-blockdewd.timer\
- Then it will remove the files and reload the systemd daemon\
- It will also ask if you want to remove yq and grepcidr
+> ⚠️ **Important:** You **must** set your `blocking_mode` in `config.yaml` (`whitelist` or `blacklist`) matching your geoip-shell setup, or the script will not run.
 
- **To remove logging**
+You can also customize:
+- `systemd_timer` — interval in hours between blocklist updates
+- `fetch_urls1` / `fetch_urls2` — additional blocklist URLs to pull from
 
-        cd geoip-blockdewd
-        sudo ./geoip-shelldewd.sh removelog
- 
- This will remove the customisations to geoip-shell-lib-common & geoip-shell-lib-ipt via removal and restoring original files\
- Then it will revert the GEOIP-SHELL_IN rules to the original, flushing GEOIP-DROP chain and lasttly removing GEOIP-DROP chain
+### 4. Install the service
 
+```bash
+chmod +x geoip-shelldewd.sh
+sudo ./geoip-shelldewd.sh install
+```
 
- **To update**
- 
-         cd geoip-blockdewd
-        sudo ./geoip-shelldewd.sh update
+This will:
+- Install `yq` and `grepcidr` if missing
+- Create and enable the systemd service and timer
+- Run the service for the first time
+- Generate a log file (`geoip-blockdewd.log`) in the extracted folder
 
+---
 
+## 📝 Optional: Enable Drop Logging
+
+To add kernel-level logging for dropped packets:
+
+```bash
+sudo ./geoip-shelldewd.sh logdrop
+```
+
+This will:
+1. Backup and modify `geoip-shell-lib-common.sh` and `geoip-shell-lib-ipt.sh`
+2. Create a new `GEOIP-DROP` mangle chain with logging rules
+3. Redirect blocked traffic through the logging chain
+
+View logs in real-time:
+
+```bash
+sudo tail -f /var/log/kern.log
+```
+
+---
+
+## 🧰 Usage & Management
+
+| Command | Description |
+|---|---|
+| `sudo ./geoip-shelldewd.sh install` | Install service, timer, and dependencies |
+| `sudo ./geoip-shelldewd.sh run` | Manually trigger a blocklist update |
+| `sudo ./geoip-shelldewd.sh logdrop` | Enable kernel logging for dropped packets |
+| `sudo ./geoip-shelldewd.sh removelog` | Remove logging customizations |
+| `sudo ./geoip-shelldewd.sh remove` | Uninstall service and timer |
+| `sudo ./geoip-shelldewd.sh update` | Update to the latest version |
+
+### Check service status
+
+```bash
+sudo systemctl status geoip-blockdewd
+sudo systemctl list-timers
+```
+
+---
+
+## 🧹 Removal
+
+### Remove the service & timer
+
+```bash
+cd geoip-blockdewd
+sudo ./geoip-shelldewd.sh remove
+```
+
+This will disable and remove the systemd service/timer, reload the daemon, and optionally remove `yq` and `grepcidr`.
+
+### Remove logging customizations
+
+```bash
+sudo ./geoip-shelldewd.sh removelog
+```
+
+This restores original geoip-shell files, reverts mangle rules, and removes the `GEOIP-DROP` chain.
+
+---
+
+## 🔄 Updating
+
+```bash
+cd geoip-blockdewd
+sudo ./geoip-shelldewd.sh update
+```
+
+This downloads the latest release and overwrites files **except** `config.yaml`, preserving your settings.
+
+---
+
+## 📁 Project Structure
+
+```
+geoip-blockdewd/
+├── config.yaml            # Configuration file (blocking mode, timer, URLs)
+├── geoip-blockdewd.sh     # Core script — fetches, filters, and imports blocklists
+├── geoip-shelldewd.sh     # Installer/manager — handles install, remove, logging, updates
+└── README.md
+```
+
+---
+
+## ⚠️ Disclaimer
+
+> This was developed and tested on **Linux Mint**. Ubuntu and other Debian-based distributions should work similarly. This is a personal project built while learning — it works well for my use case but may not suit everyone. Use at your own discretion and feel free to contribute improvements!
+
+---
+
+## 🙏 Credits
+
+This tool would not exist without the excellent work of **[friendly-bits/geoip-shell](https://github.com/friendly-bits/geoip-shell)**. If you're using this, please consider giving that project a ⭐ as well.
+
+---
+
+## 📄 License
+
+This project is available for use under the terms of the repository license.
