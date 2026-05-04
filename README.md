@@ -3,6 +3,7 @@
 > Automated blocklist management for [geoip-shell](https://github.com/friendly-bits/geoip-shell) — reduce IP set bloat and minimize hardware impact with a set-and-forget approach.
 
 [![License](https://img.shields.io/github/license/dewdmadbro/geoip-blockdewd)](https://github.com/dewdmadbro/geoip-blockdewd/blob/main/LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Linux-lightgrey)]()
 [![Latest Release](https://img.shields.io/github/v/release/dewdmadbro/geoip-blockdewd)](https://github.com/dewdmadbro/geoip-blockdewd/releases/latest)
 
 ---
