@@ -59,7 +59,7 @@ install-systemd() {
 
     # check for iprange and install if needed
     if command -v iprange &> /dev/null; then
-        echo "iprange is already installed: $(iprange 2>&1 | head -1)"
+        echo "iprange is already installed"
     else
         echo "iprange not found, installing..."
         if command -v apt &> /dev/null; then
@@ -175,7 +175,7 @@ install-cron() {
 
     # check for iprange and install if needed
     if command -v iprange &> /dev/null; then
-        echo "iprange is already installed: $(iprange 2>&1 | head -1)"
+        echo "iprange is already installed"
     else
         echo "iprange not found, installing..."
         if command -v apt &> /dev/null; then
