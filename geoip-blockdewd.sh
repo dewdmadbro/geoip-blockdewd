@@ -2,6 +2,9 @@
 
 set -euo pipefail
 
+# needed for cron
+cd "$(dirname "${BASH_SOURCE[0]}")" || exit 1
+
 # Helpers
 die()  { echo "❌  $*" >&2; exit 1; }
 info() { echo "ℹ️   $*"; }
