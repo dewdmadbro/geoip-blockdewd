@@ -1,5 +1,4 @@
 # config.yml
-
 #systemd run interval
 systemd_timer: '6h'
 #geoip-shell mode if set wrong script will fail
@@ -7,11 +6,18 @@ systemd_timer: '6h'
 # 'whitelist'
 # 'blacklist'
 blocking_mode: 
+# path to allowlist
+allowlist:
+# automatically set upon install
+install:
 #Lists need no filtering or only '#' needs filtered
+#Commented url pulls approx 900k ips use with caution on weaker systems
 fetch_urls1:
-  -  https://raw.githubusercontent.com/borestad/firehol-mirror/refs/heads/main/sslproxies_30d.ipset
-  -  https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/socks_proxy_30d.ipset
-  -  https://raw.githubusercontent.com/firehol/blocklist-ipsets/refs/heads/master/botscout_30d.ipset
+#  -  https://raw.githubusercontent.com/dewdmadbro/ip-blocklist-dewd/refs/heads/main/data/output/aggregated.txt
+  -  https://raw.githubusercontent.com/O-X-L/risk-db-lists/refs/heads/main/ip/top_100000.txt
+  -  https://opendbl.net/lists/blocklistde-all.list
+  -  https://raw.githubusercontent.com/elliotwutingfeng/ThreatFox-IOC-IPs/refs/heads/main/ips.txt
+  -  https://raw.githubusercontent.com/Naunter/BT_BlockLists/refs/heads/master/list_1.txt
   -  https://raw.githubusercontent.com/ShadowWhisperer/IPs/refs/heads/master/Lists/Probes
   -  https://raw.githubusercontent.com/ShadowWhisperer/IPs/refs/heads/master/Lists/Scanners
   -  https://raw.githubusercontent.com/ShadowWhisperer/IPs/refs/heads/master/Lists/Tunnels
@@ -23,3 +29,5 @@ fetch_urls1:
 #these need filtered to grab ips before country codes
 fetch_urls2:
   -  https://raw.githubusercontent.com/stamparm/maltrail/refs/heads/master/trails/static/mass_scanner.txt
+  -  https://raw.githubusercontent.com/borestad/blocklist-abuseipdb/main/abuseipdb-s100-30d.ipv4
+  -  https://raw.githubusercontent.com/borestad/blocklist-abuseipdb/refs/heads/main/stats/hallofshame/subnets/abuseipdb-s99-hallofshame-180d-75percent.ipv4

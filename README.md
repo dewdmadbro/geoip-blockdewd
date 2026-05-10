@@ -12,7 +12,7 @@
 
 **GEOIP-BlockDewd** is a companion tool for [geoip-shell](https://github.com/friendly-bits/geoip-shell) that automates the fetching, deduplication, and importing of IP blocklists. It intelligently filters out IPs already blocked by geoip-shell's geo-blocking rules, keeping your `ipset` entries lean and reducing unnecessary load on your hardware.
 
-Designed to run as a **systemd service**, it provides a fully automated, set-and-forget experience once configured. It can also optionally add **kernel logging** to geoip-shell drop rules for enhanced visibility.
+Designed to run as a **systemd service** or **cron**, it provides a fully automated, set-and-forget experience once configured. It can also optionally add **kernel logging** to geoip-shell drop rules for enhanced visibility.
 
 ---
 
@@ -21,7 +21,7 @@ Designed to run as a **systemd service**, it provides a fully automated, set-and
 | Feature | Description |
 |---|---|
 | 📝 **YAML Configuration** | Simple, human-readable config via `config.yaml` |
-| 🔄 **Automated Updates** | Scheduled blocklist fetching & importing (default: every 24h, configurable) |
+| 🔄 **Automated Updates** | Scheduled blocklist fetching & importing (default: every 6h, configurable) |
 | 🧹 **Duplicate Filtering** | Removes duplicate entries from all fetched lists |
 | 🌍 **Geo-Aware Filtering** | Cross-references IPs against geoip-shell's geo-blocking lists to avoid redundancy |
 | 📊 **Import Statistics** | Provides a summary of fetched, filtered, and imported IPs |
@@ -36,7 +36,7 @@ Designed to run as a **systemd service**, it provides a fully automated, set-and
 - **[geoip-shell](https://github.com/friendly-bits/geoip-shell)** — must be installed and configured first
 - **iptables & ipset** — only iptables mode is supported
 - **systemd** — for scheduling and automation
-- **yq** & **grepcidr** — auto-installed during setup if missing
+- **yq** & **grepcidr** & **iprange** — auto-installed during setup if missing
 
 ---
 
@@ -75,15 +75,30 @@ You can also customize:
 
 ### 4. Install the service
 
+**As systemd service**
+
 ```bash
 chmod +x geoip-shelldewd.sh
-sudo ./geoip-shelldewd.sh install
+sudo ./geoip-shelldewd.sh install-systemd
 ```
 
 This will:
-- Install `yq` and `grepcidr` if missing
+- Install `yq` , `grepcidr` and `iprange` if missing
 - Create and enable the systemd service and timer
 - Run the service for the first time
+- Generate a log file (`geoip-blockdewd.log`) in the extracted folder
+
+**As cron job**
+
+```bash
+chmod +x geoip-shelldewd.sh
+sudo ./geoip-shelldewd.sh install-cron
+```
+
+This will:
+- Install `yq` , `grepcidr` and `iprange` if missing
+- Create the cron job configured to run every 6 hours
+- Run geoip-blockdewd for the first time
 - Generate a log file (`geoip-blockdewd.log`) in the extracted folder
 
 ---
@@ -113,11 +128,12 @@ sudo tail -f /var/log/kern.log
 
 | Command | Description |
 |---|---|
-| `sudo ./geoip-shelldewd.sh install` | Install service, timer, and dependencies |
+| `sudo ./geoip-shelldewd.sh install-systemd` | Install service, timer, and dependencies |
+| `sudo ./geoip-shelldewd.sh install-cron` | Install as cron job and dependencies |
 | `sudo ./geoip-shelldewd.sh run` | Manually trigger a blocklist update |
 | `sudo ./geoip-shelldewd.sh logdrop` | Enable kernel logging for dropped packets |
 | `sudo ./geoip-shelldewd.sh removelog` | Remove logging customizations |
-| `sudo ./geoip-shelldewd.sh remove` | Uninstall service and timer |
+| `sudo ./geoip-shelldewd.sh remove` | Uninstall cron or service and timer |
 | `sudo ./geoip-shelldewd.sh update` | Update to the latest version |
 
 ### Check service status

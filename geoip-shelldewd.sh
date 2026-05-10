@@ -6,12 +6,12 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 usage() {
-    echo "Usage: $0 [install|remove|run|removelog|logdrop|update]"
+    echo "Usage: $0 [install-systemd|install-cron|remove|run|removelog|logdrop|update]"
     exit 1
 }
 
 
-install() {
+install-systemd() {
     # check for yq and install if needed
     if command -v yq &> /dev/null; then
         echo "yq is already installed: $(yq --version)"
@@ -57,6 +57,26 @@ install() {
         fi
     fi
 
+    # check for iprange and install if needed
+    if command -v iprange &> /dev/null; then
+        echo "iprange is already installed: $(iprange 2>&1 | head -1)"
+    else
+        echo "iprange not found, installing..."
+        if command -v apt &> /dev/null; then
+            echo "Using apt..."
+            apt install -y iprange
+        elif command -v dnf &> /dev/null; then
+            echo "Using dnf..."
+            dnf install -y iprange
+        elif command -v yum &> /dev/null; then
+            echo "Using yum..."
+            yum install -y iprange
+        else
+            echo "No supported package manager found. Please install iprange manually." >&2
+            exit 1
+        fi
+    fi
+
     chmod +x $PWD/geoip-blockdewd.sh
 
     # make systemd service file
@@ -68,7 +88,7 @@ Type=oneshot
 WorkingDirectory=$PWD
 ExecStart=$PWD/geoip-shelldewd.sh run
 StandardOutput=file:$PWD/geoip-blockdewd.log
-[Install]
+[Install]   
 WantedBy=multi-user.target
 EOF
     echo "Service File Created"
@@ -102,30 +122,160 @@ EOF
     echo "sudo systemctl list-timers"
     sleep 2
     echo "Install Complete, Bye"
+    #set install type
+    sed -i "s/^install:.*/install: 'systemd'/" config.yaml
     sleep 1
 }
 
+install-cron() {
+    # check for yq and install if needed
+    if command -v yq &> /dev/null; then
+        echo "yq is already installed: $(yq --version)"
+    else
+        echo "yq not found, installing..."
+        if command -v apt &> /dev/null; then
+            echo "Using apt..."
+            apt install -y yq
+        elif command -v dnf &> /dev/null; then
+            echo "Using dnf..."
+            dnf install -y yq
+        elif command -v yum &> /dev/null; then
+            echo "Using yum..."
+            yum install -y yq
+        else
+            echo "No package manager found, falling back to direct download..."
+            wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+            chmod +x /usr/local/bin/yq
+        fi
+        echo "yq installed: $(yq --version)"
+    fi
+
+    # Load variables from config.yaml
+    TIMER=$(yq -r '.systemd_timer' config.yaml)
+
+    # check for grepcidr and install if needed
+    if command -v grepcidr &> /dev/null; then
+        echo "grepcidr is already installed: $(grepcidr 2>&1 | head -1)"
+    else
+        echo "grepcidr not found, installing..."
+        if command -v apt &> /dev/null; then
+            echo "Using apt..."
+            apt install -y grepcidr
+        elif command -v dnf &> /dev/null; then
+            echo "Using dnf..."
+            dnf install -y grepcidr
+        elif command -v yum &> /dev/null; then
+            echo "Using yum..."
+            yum install -y grepcidr
+        else
+            echo "No supported package manager found. Please install grepcidr manually." >&2
+            exit 1
+        fi
+    fi
+
+    # check for iprange and install if needed
+    if command -v iprange &> /dev/null; then
+        echo "iprange is already installed: $(iprange 2>&1 | head -1)"
+    else
+        echo "iprange not found, installing..."
+        if command -v apt &> /dev/null; then
+            echo "Using apt..."
+            apt install -y iprange
+        elif command -v dnf &> /dev/null; then
+            echo "Using dnf..."
+            dnf install -y iprange
+        elif command -v yum &> /dev/null; then
+            echo "Using yum..."
+            yum install -y iprange
+        else
+            echo "No supported package manager found. Please install iprange manually." >&2
+            exit 1
+        fi
+    fi
+
+    chmod +x $PWD/geoip-blockdewd.sh
+    # setup cron
+    SCRIPT_PATH="$PWD/geoip-blockdewd.sh"
+    LOG_PATH="$PWD/geoip-blockdewd.log"
+    CRON_EXPR="0 */6 * * *"
+    
+    die() { echo "ERROR: $*" >&2; exit 1; }
+    
+    SCRIPT_PATH="$(realpath "$SCRIPT_PATH")"
+    
+    CRON_LINE="$CRON_EXPR $SCRIPT_PATH >> $LOG_PATH 2>&1"
+
+    CURRENT_CRONTAB=$(crontab -l 2>/dev/null || true)
+    
+    if echo "$CURRENT_CRONTAB" | grep -qF "$SCRIPT_PATH"; then
+    die "A cron entry for '$SCRIPT_PATH' already exists. Remove it first with: crontab -e"
+    fi
+    
+    ( echo "$CURRENT_CRONTAB"; echo "$CRON_LINE" ) | crontab -
+    
+    echo "Cron entry added: $CRON_LINE"
+
+    # first run of job
+    echo "Running First Job"
+    bash "$PWD/geoip-blockdewd.sh"
+    sleep 2
+    echo "Install Complete, Bye"
+    #set install type
+    sed -i "s/^install:.*/install: 'cron'/" config.yaml
+    sleep 1
+}
 
 remove() {
-    # stop and disable timer and service
-    echo "Stopping and disabling geoip-blockdewd timer and service..."
-    systemctl stop geoip-blockdewd.timer
-    systemctl disable geoip-blockdewd.timer
-    systemctl stop geoip-blockdewd.service
-    systemctl disable geoip-blockdewd.service
+    systemd_remove() {
+        # stop and disable timer and service
+        echo "Stopping and disabling geoip-blockdewd timer and service..."
+        systemctl stop geoip-blockdewd.timer
+        systemctl disable geoip-blockdewd.timer
+        systemctl stop geoip-blockdewd.service
+        systemctl disable geoip-blockdewd.service
 
-    # remove systemd files
-    echo "Removing systemd files..."
-    rm -f /etc/systemd/system/geoip-blockdewd.service
-    rm -f /etc/systemd/system/geoip-blockdewd.timer
+        # remove systemd files
+        echo "Removing systemd files..."
+        rm -f /etc/systemd/system/geoip-blockdewd.service
+        rm -f /etc/systemd/system/geoip-blockdewd.timer
 
-    # reload systemd
-    systemctl daemon-reload
-    systemctl reset-failed
+        # reload systemd
+        systemctl daemon-reload
+        systemctl reset-failed
 
-    echo "geoip-blockdewd service and timer removed"
-    sleep 1
-    
+        echo "geoip-blockdewd service and timer removed"
+        sleep 1
+    }
+
+    cron_remove() {
+        SCRIPT_PATH="$(realpath "$PWD/geoip-blockdewd.sh")"
+        CURRENT_CRONTAB=$(crontab -l 2>/dev/null || true)
+
+        if echo "$CURRENT_CRONTAB" | grep -qF "$SCRIPT_PATH"; then
+            echo "$CURRENT_CRONTAB" | grep -vF "$SCRIPT_PATH" | crontab -
+            echo "Cron entry removed for: $SCRIPT_PATH"
+        else
+            echo "No cron entry found for: $SCRIPT_PATH"
+        fi
+    }
+
+    die() { echo "ERROR: $*" >&2; exit 1; }
+
+    MODE=$(yq -r '.install' config.yaml)
+    local option_a="cron"
+    local option_b="systemd"
+
+    # removal based on install
+    if [[ "$MODE" == "$option_a" ]]; then
+        echo "Removing cron install"
+        cron_remove
+    elif [[ "$MODE" == "$option_b" ]]; then
+        echo "Removing systemd install"
+        systemd_remove
+    else
+        die "install mode incorrectly set please fix and run again."
+    fi
+
     # optionally remove yq
     read -p "Remove yq? (y/n): " answer
     if [[ "$answer" == "y" ]]; then
@@ -158,6 +308,23 @@ remove() {
         echo "grepcidr removed"
     else
         echo "grepcidr kept"
+    fi
+
+    # optionally remove iprange
+    read -p "Remove iprange? (y/n): " answer
+    if [[ "$answer" == "y" ]]; then
+        if command -v apt &> /dev/null; then
+            apt remove -y iprange
+        elif command -v dnf &> /dev/null; then
+            dnf remove -y iprange
+        elif command -v yum &> /dev/null; then
+            yum remove -y iprange
+        else
+            echo "No supported package manager found. Please remove iprange manually." >&2
+        fi
+        echo "iprange removed"
+    else
+        echo "iprange kept"
     fi
     sleep 3
 }
@@ -306,7 +473,8 @@ update() {
 }
 
 case "$1" in
-    install)     install ;;
+    install-systemd)     install-systemd ;;
+    install-cron)     install-cron ;;
     remove)      remove  ;;
     removelog) removelog ;;
     run)         run     ;;
