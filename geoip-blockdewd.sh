@@ -30,6 +30,14 @@ BLOCKLIST="/var/lib/geoip-shell/local_iplists/local_block_ipv4.net"
 readarray -t URL_LIST1 < <(yq -r '.fetch_urls1[]' config.yaml)
 readarray -t URL_LIST2 < <(yq -r '.fetch_urls2[]' config.yaml)
 
+# reserved ranges safety net
+cat > reserved.ipls << 'EOF'
+0.0.0.0/8
+224.0.0.0/3
+EOF
+
+RESERVED="reserved.ipls"
+
 ok "-----> Working"
 echo "--------------------------------------------------"
 touch blocklist
@@ -94,11 +102,11 @@ import_list() {
     if [[ ! -f "$ALLOWLIST" ]]; then
         echo "      Allowlist Not Found"
         echo "     Creating Import File"
-        iprange "$CIDRLIST" "$GSIP" > "$IMPORT"
+        iprange "$CIDRLIST" "$GSIP" --except "$RESERVED" > "$IMPORT"
     else
         echo "      Allowlist Found"
         echo "      Creating Import File"
-        iprange "$CIDRLIST" "$GSIP" --except "$ALLOWLIST" > "$IMPORT"
+        iprange "$CIDRLIST" "$GSIP" --except "$RESERVED" "$ALLOWLIST" > "$IMPORT"
     fi
 }
 
