@@ -21,31 +21,30 @@ trap cleanup EXIT
 RAW_IP="raw.ipls"               # ip lists downloaded information
 SORTED_IP="sorted.ipls"         # ip list sorted and duplicates removed
 IMPORT="import.ipls"            # ips to be added to block list
-CIDRLIST="cidr.ipls"            # cidrs to be blocked
 BLOCKED="blocked.ipls"          # ips blocked by blocklist mode
 GSIP="gsip.ipls"                # ips not blocked bt geoip-shell
 ALLOWLIST=$(yq -r '.allowlist' config.yaml)
 MODE=$(yq -r '.blocking_mode' config.yaml)
 BLOCKLIST="/var/lib/geoip-shell/local_iplists/local_block_ipv4.net"
 readarray -t URL_LIST1 < <(yq -r '.fetch_urls1[]' config.yaml)
-readarray -t URL_LIST2 < <(yq -r '.fetch_urls2[]' config.yaml)
+
+# reserved ranges safety net
+cat > reserved.ipls << 'EOF'
+0.0.0.0/8
+224.0.0.0/3
+EOF
+
+RESERVED="reserved.ipls"
 
 ok "-----> Working"
 echo "--------------------------------------------------"
-touch blocklist
+touch "$BLOCKLIST"
 
 ############### FUNCTIONS
 # download IP's from url list
 fetch() {
     local url=$1
-    curl -s "$url" | grep -v '^#' >> "$RAW_IP"
-    count1
-}
-
-# download IP's from url list
-fetch2() {
-    local url=$1
-    curl -s "$url" | awk '!/^#/ {print $1}' >> "$RAW_IP"
+    curl -s "$url" | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}(/[0-9]{1,2})?' >> "$RAW_IP"
     count1
 }
 
@@ -94,11 +93,11 @@ import_list() {
     if [[ ! -f "$ALLOWLIST" ]]; then
         echo "      Allowlist Not Found"
         echo "     Creating Import File"
-        iprange "$CIDRLIST" "$GSIP" > "$IMPORT"
+        iprange "$GSIP" --except "$RESERVED" > "$IMPORT"
     else
         echo "      Allowlist Found"
         echo "      Creating Import File"
-        iprange "$CIDRLIST" "$GSIP" --except "$ALLOWLIST" > "$IMPORT"
+        iprange "$GSIP" --except "$RESERVED" "$ALLOWLIST" > "$IMPORT"
     fi
 }
 
@@ -109,15 +108,9 @@ for url in "${URL_LIST1[@]}"; do
     fetch "$url"
 done
 
-for url in "${URL_LIST2[@]}"; do
-    fetch2 "$url"
-done
-
-#Separate IPs and CIDRs so we can check IPs to blocking rules 
+#Separate into single IP list so we can check IPs to blocking rules 
 info "-----> Removing Duplicates & Sorting"
-sort -u "$RAW_IP" | grep -v '^\s*$' | sed 's/\/32//g' | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$' > "$SORTED_IP"
-sort -u "$RAW_IP" | grep -v '^\s*$' | sed 's/\/32//g' | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$' > "$CIDRLIST"
-
+iprange --print-single-ips / -1 "$RAW_IP" > "$SORTED_IP"
 #check to geiop-shell mode and ipsets
 geoip_mode
 

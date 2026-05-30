@@ -10,8 +10,8 @@ blocking_mode:
 allowlist:
 # automatically set upon install
 install:
-#Lists need no filtering or only '#' needs filtered
-#Commented url pulls approx 900k ips use with caution on weaker systems
+#Lists to fetch
+#Commented url pulls approx 1.1 million entries use with caution on weaker systems
 fetch_urls1:
 #  -  https://raw.githubusercontent.com/dewdmadbro/ip-blocklist-dewd/refs/heads/main/data/output/aggregated.txt
   -  https://raw.githubusercontent.com/O-X-L/risk-db-lists/refs/heads/main/ip/top_100000.txt
@@ -25,9 +25,6 @@ fetch_urls1:
   -  https://raw.githubusercontent.com/Connie-Wild/scanner-ip-list/refs/heads/main/shodan.txt
   -  https://raw.githubusercontent.com/Connie-Wild/scanner-ip-list/refs/heads/main/openportstats.txt
   -  https://raw.githubusercontent.com/palinkas-jo-reggelt/List_of_Internet_Scanner_IPs/refs/heads/main/Scanner_IP_ranges.txt  
-#unique formatting
-#these need filtered to grab ips before country codes
-fetch_urls2:
   -  https://raw.githubusercontent.com/stamparm/maltrail/refs/heads/master/trails/static/mass_scanner.txt
   -  https://raw.githubusercontent.com/borestad/blocklist-abuseipdb/main/abuseipdb-s100-30d.ipv4
   -  https://raw.githubusercontent.com/borestad/blocklist-abuseipdb/refs/heads/main/stats/hallofshame/subnets/abuseipdb-s99-hallofshame-180d-75percent.ipv4
