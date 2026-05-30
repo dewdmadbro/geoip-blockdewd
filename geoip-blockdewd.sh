@@ -36,14 +36,6 @@ EOF
 
 RESERVED="reserved.ipls"
 
-# reserved ranges safety net
-cat > reserved.ipls << 'EOF'
-0.0.0.0/8
-224.0.0.0/3
-EOF
-
-RESERVED="reserved.ipls"
-
 ok "-----> Working"
 echo "--------------------------------------------------"
 touch "$BLOCKLIST"
