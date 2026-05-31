@@ -115,6 +115,7 @@ This will:
 1. Backup and modify `geoip-shell-lib-common.sh` and `geoip-shell-lib-ipt.sh`
 2. Create a new `GEOIP-DROP` mangle chain with logging rules
 3. Redirect blocked traffic through the logging chain
+4. Comment out the cron after remboot and add a geoip-shelldewd restore cron entry
 
 View logs in real-time:
 
@@ -135,6 +136,7 @@ sudo tail -f /var/log/kern.log
 | `sudo ./geoip-shelldewd.sh removelog` | Remove logging customizations |
 | `sudo ./geoip-shelldewd.sh remove` | Uninstall cron or service and timer |
 | `sudo ./geoip-shelldewd.sh update` | Update to the latest version |
+| `sudo ./geoip-shelldewd.sh restore` | Restores functionality after reboot called by cron |
 
 ### Check service status
 
@@ -162,7 +164,7 @@ This will disable and remove the systemd service/timer, reload the daemon, and o
 sudo ./geoip-shelldewd.sh removelog
 ```
 
-This restores original geoip-shell files, reverts mangle rules, and removes the `GEOIP-DROP` chain.
+This restores original geoip-shell files, reverts mangle rules, removes the `GEOIP-DROP` chain, removes cron entry and restores original cron entry.
 
 ---
 
@@ -183,7 +185,7 @@ This downloads the latest release and overwrites files **except** `config.yaml`,
 geoip-blockdewd/
 ├── config.yaml            # Configuration file (blocking mode, timer, URLs)
 ├── geoip-blockdewd.sh     # Core script — fetches, filters, and imports blocklists
-├── geoip-shelldewd.sh     # Installer/manager — handles install, remove, logging, updates
+├── geoip-shelldewd.sh     # Installer/manager — handles install, remove, logging, updates, restore 
 └── README.md
 ```
 
