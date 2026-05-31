@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 if [[ $EUID -ne 0 ]]; then
     echo "This script must be run as root" >&2
     exit 1
 fi
 
 usage() {
-    echo "Usage: $0 [install-systemd|install-cron|remove|run|removelog|logdrop|update]"
+    echo "Usage: $0 [install-systemd|install-cron|remove|run|removelog|logdrop|update|restore]"
     exit 1
 }
 
 
-install-systemd() {
-    # check for yq and install if needed
+dependencies() {
+        # check for yq and install if needed
     if command -v yq &> /dev/null; then
         echo "yq is already installed: $(yq --version)"
     else
@@ -78,7 +80,10 @@ install-systemd() {
     fi
 
     chmod +x $PWD/geoip-blockdewd.sh
+}
 
+install-systemd() {
+    dependencies
     # make systemd service file
     cat > /etc/systemd/system/geoip-blockdewd.service << EOF
 [Unit]
@@ -128,72 +133,7 @@ EOF
 }
 
 install-cron() {
-    # check for yq and install if needed
-    if command -v yq &> /dev/null; then
-        echo "yq is already installed: $(yq --version)"
-    else
-        echo "yq not found, installing..."
-        if command -v apt &> /dev/null; then
-            echo "Using apt..."
-            apt install -y yq
-        elif command -v dnf &> /dev/null; then
-            echo "Using dnf..."
-            dnf install -y yq
-        elif command -v yum &> /dev/null; then
-            echo "Using yum..."
-            yum install -y yq
-        else
-            echo "No package manager found, falling back to direct download..."
-            wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
-            chmod +x /usr/local/bin/yq
-        fi
-        echo "yq installed: $(yq --version)"
-    fi
-
-    # Load variables from config.yaml
-    TIMER=$(yq -r '.systemd_timer' config.yaml)
-
-    # check for grepcidr and install if needed
-    if command -v grepcidr &> /dev/null; then
-        echo "grepcidr is already installed: $(grepcidr 2>&1 | head -1)"
-    else
-        echo "grepcidr not found, installing..."
-        if command -v apt &> /dev/null; then
-            echo "Using apt..."
-            apt install -y grepcidr
-        elif command -v dnf &> /dev/null; then
-            echo "Using dnf..."
-            dnf install -y grepcidr
-        elif command -v yum &> /dev/null; then
-            echo "Using yum..."
-            yum install -y grepcidr
-        else
-            echo "No supported package manager found. Please install grepcidr manually." >&2
-            exit 1
-        fi
-    fi
-
-    # check for iprange and install if needed
-    if command -v iprange &> /dev/null; then
-        echo "iprange is already installed"
-    else
-        echo "iprange not found, installing..."
-        if command -v apt &> /dev/null; then
-            echo "Using apt..."
-            apt install -y iprange
-        elif command -v dnf &> /dev/null; then
-            echo "Using dnf..."
-            dnf install -y iprange
-        elif command -v yum &> /dev/null; then
-            echo "Using yum..."
-            yum install -y iprange
-        else
-            echo "No supported package manager found. Please install iprange manually." >&2
-            exit 1
-        fi
-    fi
-
-    chmod +x $PWD/geoip-blockdewd.sh
+    dependencies
     # setup cron
     SCRIPT_PATH="$PWD/geoip-blockdewd.sh"
     LOG_PATH="$PWD/geoip-blockdewd.log"
@@ -381,7 +321,29 @@ removelog() {
 
     #backup geoip
     geoip-shell-backup.sh create-backup
+    
+    #restore cron
+    SCRIPT_PATH="$(realpath "$PWD/geoip-shelldewd.sh")"
 
+    CURRENT_CRONTAB=$(crontab -l 2>/dev/null || true)
+
+    # Remove restore cron entry if present
+    if echo "$CURRENT_CRONTAB" | grep -qF "$SCRIPT_PATH restore"; then
+        CURRENT_CRONTAB=$(echo "$CURRENT_CRONTAB" | grep -vF "$SCRIPT_PATH restore")
+        echo "Restore cron entry removed"
+    else
+        echo "Restore cron entry not found, skipping"
+    fi
+
+    # Uncomment geoip-shell persistence entry if commented out
+    if echo "$CURRENT_CRONTAB" | grep -qE '^#@reboot /usr/bin/geoip-shell-run.sh restore -a.*geoip-shell-persistence'; then
+        CURRENT_CRONTAB=$(echo "$CURRENT_CRONTAB" | sed 's|^#\(@reboot /usr/bin/geoip-shell-run.sh restore -a.*geoip-shell-persistence\)|\1|')
+        echo "Uncommented geoip-shell-persistence cron entry"
+    else
+        echo "geoip-shell-persistence cron entry not found or already uncommented, skipping"
+    fi
+
+    echo "$CURRENT_CRONTAB" | crontab -
 }
 
 run() {
@@ -448,6 +410,33 @@ logdrop() {
 
     #backup geoip
     geoip-shell-backup.sh create-backup
+
+    #update cron
+    SCRIPT_PATH="$(realpath "$PWD/geoip-shelldewd.sh")"
+    LOG_PATH="$PWD/geoip-shelldewd.log"
+    CRON_EXPR="@reboot"
+
+    CRON_LINE="$CRON_EXPR $SCRIPT_PATH restore >> $LOG_PATH 2>&1"
+
+    CURRENT_CRONTAB=$(crontab -l 2>/dev/null || true)
+
+    # Comment out the geoip-shell native persistence entry if present and not already commented
+    if echo "$CURRENT_CRONTAB" | grep -qE '^@reboot /usr/bin/geoip-shell-run.sh restore -a.*geoip-shell-persistence'; then
+        CURRENT_CRONTAB=$(echo "$CURRENT_CRONTAB" | sed 's|^@reboot /usr/bin/geoip-shell-run.sh restore -a.*geoip-shell-persistence|#&|')
+        echo "Commented out geoip-shell-persistence cron entry"
+    else
+        echo "geoip-shell-persistence cron entry not found or already commented out, skipping"
+    fi
+
+    # Add restore cron entry if not already present
+    if echo "$CURRENT_CRONTAB" | grep -qF "$SCRIPT_PATH restore"; then
+        echo "Restore cron entry already exists, skipping"
+    else
+        CURRENT_CRONTAB=$(printf '%s\n%s' "$CURRENT_CRONTAB" "$CRON_LINE")
+        echo "Restore cron entry added: $CRON_LINE"
+    fi
+
+    echo "$CURRENT_CRONTAB" | crontab -
 }
 
 update() {
@@ -472,6 +461,12 @@ update() {
     sleep 1
 }
 
+restore() {
+    removelog
+    bash /usr/bin/geoip-shell-run.sh restore -a 1>/dev/null 2>/dev/null # geoip-shell-persistence
+    logdrop
+}
+
 case "$1" in
     install-systemd)     install-systemd ;;
     install-cron)     install-cron ;;
@@ -480,5 +475,6 @@ case "$1" in
     run)         run     ;;
     logdrop)     logdrop ;;
     update)      update  ;;
+    restore)    restore  ;;
     *)           usage   ;;
 esac
